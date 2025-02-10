@@ -1,7 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
-import 'package:flutter_application_1/dashboard/persistent_bottom_nav_bar.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/API_Service/api_service.dart';
 
 void main() {
   runApp(Screenpages());
@@ -28,9 +29,13 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
   bool _isNewPasswordVisible = false;
   String? _selectedRole;
   bool _isLoading = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
   String _message = '';
   late ConfettiController _confettiController;
   bool _hasConfettiFired = false;
+
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -44,38 +49,66 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
     super.dispose();
   }
 
-  Future<void> _attemptLogin() async {
+  void _attemptLogin() async {
     setState(() {
       _isLoading = true;
-      _message = ''; // Clear previous messages
+      _message = '';
     });
 
-    // Simulate network delay
-    await Future.delayed(Duration(seconds: 2));
+    final email = _emailController.text.trim();
+    final password = _newPasswordController.text.trim();
+    final role = _selectedRole;
 
-    // Dummy logic for success or failure
-    bool isSuccess = _selectedRole == 'Admin' && _isNewPasswordVisible;
+    print('Attempting login with:');
+    print('Email: $email');
+    print('Password: $password');
+    print('Role: $role');
+
+  if (email.isEmpty || password.isEmpty || role == null) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Please enter email, password, and select a role.')),
+  );
+  setState(() {
+    _isLoading = false;
+  });
+  return;  // This prevents further execution
+}
+
+
+ _apiService.login(context, email, password, role);
 
     setState(() {
       _isLoading = false;
-      if (isSuccess) {
-        _message = 'Login Successful';
-
-        // Trigger confetti before navigation
-        if (!_hasConfettiFired) {
-          _confettiController.play();
-          _hasConfettiFired = true; // Set the flag to true to prevent firing again
-        }
-
-        // Navigate to the Dashboard page
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => PersistentBottomNavBar()),
-        );
-      } else {
-        _message = 'Login Failed. Try again.';
-      }
     });
+
+    // if (response != null && response['success'] == true) {
+    //   setState(() {
+    //     _message = 'Login Successful';
+    //   });
+
+    //   // Store user ID if available
+    //   final userId = response['id'];
+    //   if (userId != null) {
+    //     final prefs = await SharedPreferences.getInstance();
+    //     await prefs.setString('user_id', userId.toString());
+    //   }
+
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text('Login successful')),
+    //   );
+
+    //   Navigator.pushReplacement(
+    //     context,
+    //     MaterialPageRoute(builder: (context) => PersistentBottomNavBar()),
+    //   );
+    // } else {
+    //   setState(() {
+    //     _message = response?['message'] ?? 'Login Failed. Try again.';
+    //   });
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text(_message)),
+    //   );
+    // }
   }
 
   @override
@@ -98,13 +131,16 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
           Center(
             child: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Adjust blur intensity
+                filter: ImageFilter.blur(
+                    sigmaX: 10, sigmaY: 10), // Adjust blur intensity
                 child: SingleChildScrollView(
                   child: Container(
                     width: 350, // Set your box width
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white, width: 1), // Optional border
-                      borderRadius: BorderRadius.circular(10), // Rounded corners
+                      border: Border.all(
+                          color: Colors.white, width: 1), // Optional border
+                      borderRadius:
+                          BorderRadius.circular(10), // Rounded corners
                     ),
                     alignment: Alignment.topCenter,
                     child: Padding(
@@ -180,6 +216,7 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
                           ),
                           SizedBox(height: 20),
                           TextFormField(
+                            controller: _emailController,
                             cursorColor: Color(0xFF028090),
                             decoration: InputDecoration(
                               hintText: 'Email',
@@ -204,6 +241,7 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
                           ),
                           SizedBox(height: 20),
                           TextFormField(
+                            controller: _newPasswordController,
                             obscureText: !_isNewPasswordVisible,
                             cursorColor: Color(0xFF028090),
                             decoration: InputDecoration(
@@ -243,13 +281,13 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
                           ),
                           SizedBox(height: 20),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
                             child: ElevatedButton(
-                              onPressed: () async {
-                                await _attemptLogin();
-                              },
+                              onPressed: _attemptLogin,
                               child: _isLoading
-                                  ? CircularProgressIndicator(color: Colors.white)
+                                  ? CircularProgressIndicator(
+                                      color: Colors.white)
                                   : Text(
                                       'Login',
                                       style: TextStyle(
@@ -259,7 +297,8 @@ class _BackgroundWithGifState extends State<BackgroundWithGif> {
                                     ),
                               style: ElevatedButton.styleFrom(
                                 elevation: 20,
-                                foregroundColor: Colors.white, // Button text color
+                                foregroundColor:
+                                    Colors.white, // Button text color
                                 backgroundColor: Color(0xFF028090),
                                 padding: EdgeInsets.symmetric(
                                     vertical: 12.0, horizontal: 70.0),

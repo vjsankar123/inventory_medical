@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/API_Service/api_service.dart';
 import 'package:flutter_application_1/dashboard/persistent_bottom_nav_bar.dart';
 import 'staff_card.dart';
 import 'search_widget.dart';
@@ -8,32 +9,53 @@ class StaffPage extends StatefulWidget {
   @override
   _StaffPageState createState() => _StaffPageState();
 }
+final ApiService apiService = ApiService();
 
 class _StaffPageState extends State<StaffPage> {
-  final List<Map<String, String>> staffList = [
-    // Sample staff data
-    {
-      'name': 'Vignesh',
-      'email': 'Vignesh@example.com',
-      'contact': '1234567890',
-      'role': 'Admin'
-    },
-    {
-      'name': 'Sankar',
-      'email': 'Sankar@example.com',
-      'contact': '0987654321',
-      'role': 'Staff'
-    },
-    {
-      'name': 'Ram',
-      'email': 'Ram@example.com',
-      'contact': '1122334455',
-      'role': 'Admin'
-    },
-  ];
+  List<Map<String, String>> staffList = [];
+  bool _isLoading = true;
+
+  Future<void> fetchAndDisplayTasks() async {
+    final token = await apiService.getTokenFromStorage();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You are not logged in. Please log in first.')),
+      );
+      return;
+    }
+
+    try {
+      final fetchedUsers = await apiService.fetchUsers();
+      setState(() {
+        staffList = fetchedUsers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch staff. Please try again later.')),
+      );
+    }
+  }
 
   TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  ScrollController _scrollController = ScrollController();
+  bool isScrolled = false; // To track whether the header needs a shadow
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAndDisplayTasks();
+    _scrollController.addListener(() {
+      setState(() {
+        isScrolled = _scrollController.offset > 10; // Adjust threshold as needed
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,17 +71,17 @@ class _StaffPageState extends State<StaffPage> {
         appBar: AppBar(
           title: _isSearching
               ? SearchWidget(controller: _searchController)
-              :FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'User List', // Adjusted title for flexibility
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 24,
-              fontWeight: FontWeight.bold, // Bold text for better visibility
-            ),
-          ),
-        ),
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'User List', // Adjusted title for flexibility
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold, // Bold text for better visibility
+                    ),
+                  ),
+                ),
           actions: [
             IconButton(
               icon: Icon(_isSearching ? Icons.cancel : Icons.search),
@@ -75,21 +97,23 @@ class _StaffPageState extends State<StaffPage> {
           backgroundColor: Colors.white,
         ),
         backgroundColor: Colors.white,
-        body: ListView.builder(
-          itemCount: staffList.length,
-          itemBuilder: (context, index) {
-            if (_searchController.text.isNotEmpty &&
-                !staffList[index]['name']!
-                    .toLowerCase()
-                    .contains(_searchController.text.toLowerCase())) {
-              return Container();
-            }
-            return StaffCard(
-              staff: staffList[index],
-              onDelete: () {},
-            );
-          },
-        ),
+        body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                itemCount: staffList.length,
+                itemBuilder: (context, index) {
+                  if (_searchController.text.isNotEmpty &&
+                      !staffList[index]['name']!
+                          .toLowerCase()
+                          .contains(_searchController.text.toLowerCase())) {
+                    return Container();
+                  }
+                  return StaffCard(
+                    staff: staffList[index],
+                    onDelete: () {},
+                  );
+                },
+              ),
       ),
     );
   }

@@ -167,6 +167,7 @@ class _ShopDetailsScreenState extends State<ShopDetailsScreen> {
                   ElevatedButton.icon(
                     onPressed: () {
                       showModalBottomSheet(
+                        backgroundColor: Colors.white,
                         context: context,
                         isScrollControlled: true,
                         shape: const RoundedRectangleBorder(

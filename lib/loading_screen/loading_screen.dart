@@ -6,7 +6,8 @@ class LoadingPage extends StatefulWidget {
   _LoadingPageState createState() => _LoadingPageState();
 }
 
-class _LoadingPageState extends State<LoadingPage> with SingleTickerProviderStateMixin {
+class _LoadingPageState extends State<LoadingPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
 
@@ -61,28 +62,6 @@ class _LoadingPageState extends State<LoadingPage> with SingleTickerProviderStat
               'assets/image/evvi.gif', // Path to your GIF
               fit: BoxFit.cover,
             ),
-          ),
-          // Animated text
-          AnimatedBuilder(
-            animation: _animation,
-            builder: (context, child) {
-              return Positioned(
-                bottom: _animation.value,
-                left: 0,
-                right: 0,
-                // top: 10,
-                child: Center(
-                  child: Text(
-                    'Powered by Evvi',
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ],
       ),

@@ -30,7 +30,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -43,6 +42,10 @@ dependencies:
   syncfusion_flutter_charts: ^28.1.39
   printing: ^5.0.0
   file_picker: ^5.0.0 # Check for the latest version on pub.dev
+  http: ^0.13.6  # Use latest version if available
+  shared_preferences: ^2.0.18 # Use the latest version
+  dart_jsonwebtoken: ^2.0.0 # Use the latest version
+  lottie: ^2.0.0
   # persistent_bottom_nav_bar: ^6.2.1
   # confetti: ^0.8.0
  
@@ -89,6 +92,7 @@ flutter:
     - assets/videos/medical.mp4
     - assets/image/evvi.gif
     - assets/image/medical.gif
+    - assets/image/Animation2.gif
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

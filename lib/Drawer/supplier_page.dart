@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/API_Service/api_service.dart';
+import 'package:flutter_application_1/bottom_items/staff_page.dart';
 import 'package:flutter_application_1/dashboard/persistent_bottom_nav_bar.dart';
 import 'supplier_form.dart';
 
@@ -7,40 +9,71 @@ class SupplierPage extends StatefulWidget {
   _SupplierPageState createState() => _SupplierPageState();
 }
 
-class _SupplierPageState extends State<SupplierPage> {
-  final List<Map<String, String>> data = [
-    {
-      "Name": "ABC Supplies",
-      "Phone No": "9876543210",
-      "Email": "abc@supplies.com",
-      "Address": "1234, Street Name, City",
-      "GST No": "27ABCDE1234F1Z5",
-      "Status": "Active"
-    },
-    {
-      "Name": "XYZ Traders",
-      "Phone No": "9123456789",
-      "Email": "xyz@traders.com",
-      "Address": "5678, Road Avenue, Town",
-      "GST No": "29XYZABCD5671K1",
-      "Status": "Inactive"
-    },
-  ];
+final ApiService apiService = ApiService();
 
-  List<Map<String, String>> filteredData = [];
+class _SupplierPageState extends State<SupplierPage> {
+  List<Map<String, dynamic>> supplierList = [];
+
+  List<Map<String, dynamic>> filteredData = [];
   bool isSearching = false;
+  bool _isLoading = true;
+  TextEditingController _searchController = TextEditingController();
+  ScrollController _scrollController = ScrollController();
+  bool isScrolled = false;
+
+  Future<void> fetchAndDisplaysupplier() async {
+    final token = await apiService.getTokenFromStorage();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('You are not logged in. Please log in first.')),
+      );
+      return;
+    }
+
+    try {
+      final fetchedSuppliers = await apiService.fetchsupplier();
+      setState(() {
+        filteredData = fetchedSuppliers;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Failed to fetch suppliers. Please try again later.')),
+      );
+    }
+  }
+
+  // To track whether the header needs a shadow
 
   @override
   void initState() {
     super.initState();
-    filteredData = data;
+    fetchAndDisplaysupplier();
   }
 
+  //   @override
+  // void initState() {
+  //   super.initState();
+  //   fetchAndDisplaysupplier();
+  //   _scrollController.addListener(() {
+  //     setState(() {
+  //       isScrolled = _scrollController.offset > 10; // Adjust threshold as needed
+  //     });
+  //   });
+  // }
+
   void searchSuppliers(String query) {
-    final results = data.where((item) {
-      final name = item['Name']?.toLowerCase() ?? '';
-      final phone = item['Phone No']?.toLowerCase() ?? '';
-      final email = item['Email']?.toLowerCase() ?? '';
+    final results = supplierList.where((item) {
+      final name = item['company_name']?.toLowerCase() ?? '';
+      final phone = item['phone_number']?.toLowerCase() ?? '';
+      final email = item['email']?.toLowerCase() ?? '';
       final input = query.toLowerCase();
       return name.contains(input) ||
           phone.contains(input) ||
@@ -54,34 +87,46 @@ class _SupplierPageState extends State<SupplierPage> {
 
   void addNewSupplier() {
     showModalBottomSheet(
-          backgroundColor: Colors.white,
+      backgroundColor: Colors.white,
       context: context,
+      isScrollControlled: true, // Ensures it takes full height when needed
       builder: (context) {
-        return SupplierForm(
-          onAddSupplier: (newSupplier) {
-            setState(() {
-              data.add(newSupplier);
-              filteredData = data;
-            });
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7, // Adjust as needed
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: SupplierForm(
+                onAddSupplier: (newSupplier) {
+                  setState(() {
+                    supplierList.add(newSupplier);
+                    filteredData = supplierList;
+                  });
+                },
+              ),
+            );
           },
         );
       },
     );
   }
 
-  void editSupplier(Map<String, String> supplier) {
+  void editSupplier(Map<String, dynamic> supplier) {
     showModalBottomSheet(
-          backgroundColor: Colors.white,
+      backgroundColor: Colors.white,
       context: context,
       builder: (context) {
         return SupplierForm(
-          initialSupplier: supplier,
+          initialSupplier: supplier.cast<String, String>(),
           onAddSupplier: (editedSupplier) {
             setState(() {
-              int index = data.indexOf(supplier);
+              int index = supplierList.indexOf(supplier);
               if (index != -1) {
-                data[index] = editedSupplier;
-                filteredData = data;
+                supplierList[index] = editedSupplier;
+                filteredData = supplierList;
               }
             });
           },
@@ -90,7 +135,7 @@ class _SupplierPageState extends State<SupplierPage> {
     );
   }
 
-  void deleteSupplier(Map<String, String> supplier) {
+  void deleteSupplier(Map<String, dynamic> supplier) {
     showDialog(
       context: context,
       builder: (context) {
@@ -103,14 +148,14 @@ class _SupplierPageState extends State<SupplierPage> {
               onPressed: () {
                 Navigator.pop(context); // Close the dialog without deleting
               },
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.grey)),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
             TextButton(
               onPressed: () {
                 setState(() {
-                  data.remove(supplier); // Remove supplier from the list
-                  filteredData = data; // Update the filtered list
+                  supplierList
+                      .remove(supplier); // Remove supplier from the list
+                  filteredData = supplierList; // Update the filtered list
                 });
                 Navigator.pop(context); // Close the dialog after deletion
               },
@@ -126,32 +171,42 @@ class _SupplierPageState extends State<SupplierPage> {
   }
 
   void viewSupplierDetails(Map<String, String> supplier) {
-    
     showDialog(
-      
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.white,
           title: Text(
-            supplier['Name'] ?? 'Supplier Details',
+            supplier['company_name'] ?? 'Supplier Details',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Color(0xFF028090), // Match the theme color
             ),
           ),
-          content: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDetailText('Phone: ${supplier['Phone No']}'),
-                _buildDetailText('Email: ${supplier['Email']}'),
-                _buildDetailText('Address: ${supplier['Address']}'),
-                _buildDetailText('GST No: ${supplier['GST No']}'),
-                _buildDetailText('Status: ${supplier['Status']}'),
-              ],
+          content: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.of(context).size.height * 0.5, // Limits height
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize:
+                    MainAxisSize.min, // Ensures it takes minimum space
+                children: [
+                  _buildDetailText('Phone: ${supplier['phone_number']}'),
+                  _buildDetailText('Email: ${supplier['email']}'),
+                  _buildDetailText('Address: ${supplier['address']}'),
+                  _buildDetailText(
+                      'GST No: ${supplier['supplier_gst_number']}'),
+                  _buildDetailText('Postal Code: ${supplier['postal_code']}'),
+                  _buildDetailText('Country: ${supplier['country']}'),
+                  _buildDetailText('City: ${supplier['city']}'),
+                  _buildDetailText('State: ${supplier['state']}'),
+                  _buildDetailText('Status: ${supplier['status']}'),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -228,15 +283,15 @@ class _SupplierPageState extends State<SupplierPage> {
                   hintText: 'Search suppliers...',
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                  borderSide: BorderSide(
-                    color: Color(0xFF028090),
-                    width: 2.0,
+                    borderRadius: BorderRadius.circular(20.0),
                   ),
-                ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide(
+                      color: Color(0xFF028090),
+                      width: 2.0,
+                    ),
+                  ),
                 ),
                 cursorColor: Color(0xFF028090),
                 onChanged: searchSuppliers,
@@ -289,7 +344,7 @@ class _SupplierPageState extends State<SupplierPage> {
                                         size: 24, color: Color(0xFF028090)),
                                     const SizedBox(width: 10),
                                     Text(
-                                      item['Name'] ?? '',
+                                      item['company_name'] ?? '',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
@@ -303,7 +358,7 @@ class _SupplierPageState extends State<SupplierPage> {
                                     const Icon(Icons.phone,
                                         size: 20, color: Color(0xFF028090)),
                                     const SizedBox(width: 10),
-                                    Text(" ${item['Phone No']}"),
+                                    Text(" ${item['phone_number']}"),
                                   ],
                                 ),
                                 const SizedBox(height: 5),
@@ -312,7 +367,7 @@ class _SupplierPageState extends State<SupplierPage> {
                                     const Icon(Icons.email,
                                         size: 20, color: Color(0xFF028090)),
                                     const SizedBox(width: 10),
-                                    Text(" ${item['Email']}"),
+                                    Text(" ${item['email']}"),
                                   ],
                                 ),
                                 const SizedBox(height: 5),
@@ -321,7 +376,7 @@ class _SupplierPageState extends State<SupplierPage> {
                                     const Icon(Icons.location_on,
                                         size: 20, color: Color(0xFF028090)),
                                     const SizedBox(width: 10),
-                                    Text(" ${item['Address']}"),
+                                    Text(" ${item['address']}"),
                                   ],
                                 ),
                                 const SizedBox(height: 5),
@@ -330,12 +385,12 @@ class _SupplierPageState extends State<SupplierPage> {
                                     const Icon(Icons.receipt,
                                         size: 20, color: Color(0xFF028090)),
                                     const SizedBox(width: 10),
-                                    Text(" ${item['GST No']}"),
+                                    Text(" ${item['supplier_gst_number']}"),
                                   ],
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  "Status: ${item['Status']}",
+                                  "Status: ${item['status']}",
                                   style: TextStyle(
                                     color: item['Status'] == "Active"
                                         ? Colors.green
@@ -352,13 +407,14 @@ class _SupplierPageState extends State<SupplierPage> {
                               if (value == 'Edit') {
                                 editSupplier(item);
                               } else if (value == 'See All') {
-                                viewSupplierDetails(item);
+                                viewSupplierDetails(
+                                    item.cast<String, String>());
                               } else if (value == 'Delete') {
                                 deleteSupplier(item);
                               }
                             },
                             itemBuilder: (context) => [
-                                 PopupMenuItem(
+                              PopupMenuItem(
                                 value: 'See All',
                                 child: ListTile(
                                   leading: const Icon(Icons.visibility,
@@ -374,7 +430,6 @@ class _SupplierPageState extends State<SupplierPage> {
                                   title: const Text('Edit'),
                                 ),
                               ),
-                           
                               PopupMenuItem(
                                 value: 'Delete',
                                 child: ListTile(

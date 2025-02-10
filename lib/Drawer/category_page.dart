@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/API_Service/api_service.dart';
+import 'package:flutter_application_1/bottom_items/staff_page.dart';
 import 'package:flutter_application_1/dashboard/persistent_bottom_nav_bar.dart';
 
 class CategoryPage extends StatefulWidget {
@@ -6,375 +8,522 @@ class CategoryPage extends StatefulWidget {
   _CategoryPageState createState() => _CategoryPageState();
 }
 
+final ApiService apiService = ApiService();
+
 class _CategoryPageState extends State<CategoryPage> {
-  List<Map<String, String>> categories = [
-    {'id': '1', 'name': 'Medicines'},
-    {'id': '2', 'name': 'Health Supplements'},
-  ];
+  List<Map<String, String>> categorylist = [];
+  final TextEditingController _idController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+  List<Map<String, String>> categories = [];
+  List<Map<String, String>> filteredCategories = [];
+  TextEditingController searchController = TextEditingController();
+  ScrollController _scrollController = ScrollController();
+  int _currentPage = 1;
+  bool _isFetchingMore = false;
+  final int _limit = 10; // Number of items per page
+  bool _hasMore = true; // Track if there are more pages
 
-  void addCategory(String name) {
+  bool _isSearching = false;
+  bool isScrolled = false;
+  bool _isLoading = true;
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   filteredCategories = List.from(categories);
+  // }
+  Future<void> fetchAndDisplayCategory({bool isLoadMore = false}) async {
+    if (_isFetchingMore) return;
+
     setState(() {
-      categories.add({'id': (categories.length + 1).toString(), 'name': name});
+      _isFetchingMore = true;
+    });
+
+    try {
+      final fetchedCategory =
+          await apiService.fetchcategory(page: _currentPage, limit: _limit);
+
+      setState(() {
+        if (isLoadMore) {
+          categorylist.addAll(fetchedCategory);
+        } else {
+          categorylist = fetchedCategory;
+        }
+
+        _isFetchingMore = false;
+        _hasMore =
+            _currentPage < apiService.totalPages; // Ensure this is updated
+      });
+    } catch (e) {
+      print('Error fetching categories: $e');
+      setState(() {
+        _isFetchingMore = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAndDisplayCategory();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        if (_hasMore && !_isFetchingMore) {
+          setState(() {
+            _currentPage++;
+          });
+          fetchAndDisplayCategory(isLoadMore: true);
+        }
+      }
     });
   }
 
-  void editCategory(int index, String newName) {
+  void filterCategories(String query) {
     setState(() {
-      categories[index]['name'] = newName;
+      filteredCategories = categories
+          .where((category) =>
+              category['name']!.toLowerCase().contains(query.toLowerCase()))
+          .toList();
     });
   }
 
-  void deleteCategory(int index) {
-    setState(() {
-      categories.removeAt(index);
-    });
+  void addCategory(String name, String description) async {
+    setState(() {});
+    Map<String, dynamic> categorydata = {
+      "id": _idController.text,
+      "category_name": name,
+      "description": description,
+    };
+
+    bool success = await apiService.createCategory(categorydata);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('User created successfully!'),
+            backgroundColor: Colors.green),
+      );
+      Navigator.pop(context); // Close modal
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to create user.'),
+            backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void editCategory(int index, String newName, String newDescription) async {
+    String categoryId = categorylist[index]['id'] ?? '';
+
+    if (categoryId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Category ID not found.'),
+            backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    Map<String, dynamic> updatedCategory = {
+      "category_name": newName,
+      "description": newDescription,
+    };
+
+    bool success = await apiService.updateCategory(categoryId, updatedCategory);
+
+    if (success) {
+      setState(() {
+        categorylist[index]['category_name'] = newName;
+        categorylist[index]['description'] = newDescription;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Category updated successfully!'),
+            backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to update category.'),
+            backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _showDeleteConfirmationDialog(
+      BuildContext context, String categoryId, int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this category?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close the dialog
+
+                try {
+                  await apiService.deleteCatgeoryFromApi(categoryId, () {
+                    setState(() {
+                      categorylist.removeAt(index);
+                    });
+                  });
+                } catch (e) {
+                  print("Error deleting category: $e");
+                }
+              },
+              child: Text('Delete'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => PersistentBottomNavBar(),
-        ));
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Color(0xFF028090),
-          title: Text(
-            'Category Details',
-            style: TextStyle(
-                fontSize: 25.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.white),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color(0xFF028090),
+        title: _isSearching
+            ? Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.white, // Background color
+                  borderRadius: BorderRadius.circular(10), // Rounded corners
+                  border:
+                      Border.all(color: Colors.grey, width: 1), // Border color
+                ),
+                child: TextField(
+                  controller: searchController,
+                  onChanged: filterCategories,
+                  decoration: InputDecoration(
+                    hintText: 'Search Category...',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    prefixIcon: Icon(Icons.search, color: Colors.black),
+                  ),
+                  style: TextStyle(color: Colors.black),
+                  cursorColor: Color(0xFF028090),
+                ),
+              )
+            : Text(
+                'Category Details',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
+              ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => PersistentBottomNavBar()),
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.cancel : Icons.search,
+                color: Colors.black),
             onPressed: () {
-              Navigator.of(context).pushReplacement(MaterialPageRoute(
-                builder: (context) => PersistentBottomNavBar(),
-              ));
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  searchController.clear();
+                  filterCategories('');
+                }
+              });
             },
           ),
-        ),
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: Colors
-                                      .black), // Outer border for the entire table
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                            child: DataTable(
-                              border: TableBorder.all(
-                                color:
-                                    Colors.black, // Border color for the table
-                                width: 1, // Border width
-                              ),
-                              columns: [
-                                DataColumn(
-                                    label: Text('S.No',
+        ],
+      ),
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    border: TableBorder.all(color: Colors.black, width: 1),
+                    columnSpacing: 20.0,
+                    columns: [
+                      DataColumn(
+                          label: Text('S.No',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold))),
+                      DataColumn(
+                          label: Text('Category Name',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold))),
+                      DataColumn(
+                          label: Text('Description',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold))),
+                      DataColumn(
+                          label: Text('Action',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold))),
+                    ],
+                    rows: categorylist.asMap().entries.map((entry) {
+                      int index = entry.key + 1;
+                      Map<String, String> category = entry.value;
+                      return DataRow(cells: [
+                        DataCell(Text(index.toString())),
+                        DataCell(Text(category['category_name'] ?? 'N/A')),
+                        DataCell(SizedBox(
+                          width: 150,
+                          child: Text(category['description'] ?? 'N/A',
+                              overflow: TextOverflow.ellipsis, maxLines: 2),
+                        )),
+                        DataCell(Row(children: [
+                          IconButton(
+                            icon: Icon(Icons.edit_square, color: Colors.orange),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  TextEditingController nameController =
+                                      TextEditingController(
+                                          text: category['category_name']);
+                                  TextEditingController descController =
+                                      TextEditingController(
+                                          text: category['description']);
+                                  return AlertDialog(
+                                    backgroundColor: Colors.white,
+                                    title: Text('Edit Category',
                                         style: TextStyle(
                                             fontSize: 20,
-                                            fontWeight: FontWeight.bold))),
-                                DataColumn(
-                                    label: Text('Category Name',
-                                        style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold))),
-                                DataColumn(
-                                    label: Text('Action',
-                                        style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold))),
-                              ],
-                              rows: categories.asMap().entries.map((entry) {
-                                int index = entry.key;
-                                Map<String, String> category = entry.value;
-                                return DataRow(cells: [
-                                  DataCell(Text(category['id']!)),
-                                  DataCell(Text(category['name']!)),
-                                  DataCell(
-                                    Row(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black)),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.edit_square,
-                                            color: Colors.orange,
+                                        TextField(
+                                          controller: nameController,
+                                          decoration: InputDecoration(
+                                            hintText: 'Category Name',
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              borderSide: const BorderSide(
+                                                  color: Color.fromRGBO(
+                                                      2, 116, 131, 1),
+                                                  width:
+                                                      2.0), // Focused border color
+                                            ),
                                           ),
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) {
-                                                TextEditingController
-                                                    editController =
-                                                    TextEditingController(
-                                                        text: category['name']);
-                                                return AlertDialog(
-                                                  backgroundColor: Colors.white,
-                                                  title: Text('Edit Category', style: TextStyle(fontSize: 20, color: Colors.black,fontWeight: FontWeight.bold),),
-                                                  content: TextField(
-                                                    controller: editController,
-                                                    decoration: InputDecoration(
-                                                      border:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12.0),
-                                                      ),
-                                                      focusedBorder:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12.0),
-                                                        borderSide: BorderSide(
-                                                          color:
-                                                              Color(0xFF028090),
-                                                          width: 2.0,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    cursorColor:
-                                                        Color(0xFF028090),
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        Navigator.pop(context);
-                                                      },
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            Colors.grey,
-                                                        // padding:
-                                                        //     EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                                      ),
-                                                      child: Text(
-                                                        'Cancel',
-                                                        style: TextStyle(
-                                                            color:
-                                                                Colors.black),
-                                                      ),
-                                                    ),
-                                                    ElevatedButton(
-                                                      onPressed: () {
-                                                        if (editController
-                                                            .text.isNotEmpty) {
-                                                          editCategory(
-                                                              index,
-                                                              editController
-                                                                  .text);
-                                                          Navigator.pop(
-                                                              context);
-                                                        }
-                                                      },
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            Color(0xFF028090),
-                                                        // padding: EdgeInsets
-                                                        //     .symmetric(
-                                                        //         horizontal: 20,
-                                                        //         vertical: 10),
-                                                      ),
-                                                      child: Text(
-                                                        'Save',
-                                                        style: TextStyle(
-                                                            color:
-                                                                Colors.white),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                          },
+                                          cursorColor:
+                                              Color.fromRGBO(2, 116, 131, 1),
                                         ),
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.auto_delete,
-                                            color: Colors.red,
+                                        SizedBox(height: 10),
+                                        TextField(
+                                          controller: descController,
+                                          maxLines: 5,
+                                          decoration: InputDecoration(
+                                            hintText: 'Description',
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              borderSide: const BorderSide(
+                                                  color: Color.fromRGBO(
+                                                      2, 116, 131, 1),
+                                                  width:
+                                                      2.0), // Focused border color
+                                            ),
                                           ),
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) {
-                                                return AlertDialog(
-                                                  backgroundColor: Colors.white,
-                                                  title:
-                                                      Text('Confirm Deletion'),
-                                                  content: Text(
-                                                      'Are you sure you want to delete this category?'),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        Navigator.pop(context);
-                                                      },
-                                                      child: Text('Cancel',style: TextStyle(color: Colors.grey),),
-                                                    ),
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        deleteCategory(index);
-                                                        Navigator.pop(context);
-                                                      },
-                                                      
-                                                      child: Text('Delete',style: TextStyle(color: Colors.red),),
-                                                    ),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                          },
+                                          cursorColor:
+                                              Color.fromRGBO(2, 116, 131, 1),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ]);
-                              }).toList(),
-                            ),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text('Cancel')),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          editCategory(
+                                              index - 1,
+                                              nameController.text,
+                                              descController.text);
+                                          Navigator.pop(context);
+                                        },
+                                        child: Text('Save'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        ),
-                      ],
-                    ),
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _showDeleteConfirmationDialog(
+                                context, category['id']!, index - 1),
+                          ),
+                        ])),
+                      ]);
+                    }).toList(),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back,
+                      color: _currentPage > 1 ? Colors.blue : Colors.grey),
+                  onPressed: _currentPage > 1
+                      ? () {
+                          setState(() {
+                            _currentPage--;
+                          });
+                          fetchAndDisplayCategory();
+                        }
+                      : null,
+                ),
+                Text("Page $_currentPage",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: Icon(Icons.arrow_forward,
+                      color: _hasMore ? Colors.blue : Colors.grey),
+                  onPressed: _hasMore
+                      ? () {
+                          setState(() {
+                            _currentPage++;
+                          });
+                          fetchAndDisplayCategory(isLoadMore: true);
+                        }
+                      : null,
+                ),
+              ],
+            )
+          ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            showModalBottomSheet(
-              backgroundColor: Colors.white,
-              context: context,
-              builder: (BuildContext context) {
-                return AddCategoryBottomSheet(
-                  onAddCategory: (name) {
-                    addCategory(name);
-                  },
-                );
-              },
-            );
-          },
-          child: const Icon(Icons.add, color: Colors.white, size: 30),
-          elevation: 30.0,
-          backgroundColor: Color(0xFF028090),
-          tooltip: 'Add Category',
-        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true, // Ensures full view
+            builder: (BuildContext context) {
+              return AddCategoryBottomSheet(
+                nameController: _nameController,
+                descController: _descController,
+                onAddCategory: (name, description) =>
+                    addCategory(name, description),
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        elevation: 30.0,
+        backgroundColor: Color(0xFF028090),
+        tooltip: 'Add Category',
       ),
     );
   }
 }
 
-class AddCategoryBottomSheet extends StatefulWidget {
-  final Function(String) onAddCategory;
+class AddCategoryBottomSheet extends StatelessWidget {
+  final Function(String, String) onAddCategory;
+  final TextEditingController nameController;
+  final TextEditingController descController;
 
-  AddCategoryBottomSheet({required this.onAddCategory});
-
-  @override
-  _AddCategoryBottomSheetState createState() => _AddCategoryBottomSheetState();
-}
-
-class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
-  final _categoryController = TextEditingController();
+  AddCategoryBottomSheet({
+    required this.onAddCategory,
+    required this.nameController,
+    required this.descController,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Container(
-        // color: Colors.white, // Set the desired background color here
-
-        child: Column(
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              'Category Name',
-              style: TextStyle(fontSize: 20, color: Colors.black,fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _categoryController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                  borderSide: BorderSide(
-                    color: Color(0xFF028090),
-                    width: 2.0,
-                  ),
-                ),
+      padding: EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Create Category',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black)),
+          SizedBox(height: 10),
+          TextField(
+            controller: nameController,
+            decoration: InputDecoration(
+              hintText: 'Category Name',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
               ),
-              cursorColor: Color(0xFF028090),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: const BorderSide(
+                    color: Color.fromRGBO(2, 116, 131, 1),
+                    width: 2.0), // Focused border color
+              ),
             ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      String categoryName = _categoryController.text;
-                      if (categoryName.isNotEmpty) {
-                        widget.onAddCategory(categoryName);
-                        Navigator.pop(context);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text('Category name cannot be empty')),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF028090),
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    child: Text(
-                      'Submit',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
+            cursorColor: Color.fromRGBO(2, 116, 131, 1),
+          ),
+          SizedBox(height: 10),
+          TextField(
+            controller: descController,
+            maxLines: 5,
+            decoration: InputDecoration(
+              hintText: 'Description',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: const BorderSide(
+                    color: Color.fromRGBO(2, 116, 131, 1),
+                    width: 2.0), // Focused border color
+              ),
             ),
-          ],
-        ),
+            cursorColor: Color.fromRGBO(2, 116, 131, 1),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              onAddCategory(nameController.text, descController.text);
+              // DO NOT clear the controllers here
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF028090)),
+            child: Text('Submit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
