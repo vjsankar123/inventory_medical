@@ -170,8 +170,8 @@ class ApiService {
   }
 
   // get all users list//
-  Future<List<Map<String, String>>> fetchUsers() async {
-    final url = '$baseUrl/staff/users';
+  Future<List<Map<String, String>>> fetchUsers( {int page = 1, int limit = 10}) async {
+    final url = '$baseUrl/staff/users?page=$page&limit=$limit';
     try {
       final response = await _makeRequest(url, 'GET');
       if (response.statusCode == 200) {
@@ -245,9 +245,9 @@ class ApiService {
     }
   }
 
-
   int totalPages = 1; // Store total pages globally
-  Future<List<Map<String, String>>> fetchcategory({int page = 1, int limit = 10}) async {
+  Future<List<Map<String, String>>> fetchcategory(
+      {int page = 1, int limit = 10}) async {
     final url = '$baseUrl/pro_category/all_category?page=$page&limit=$limit';
     print('Fetching: $url');
 
@@ -255,7 +255,7 @@ class ApiService {
       final response = await _makeRequest(url, 'GET');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         totalPages = data["totalPages"]; // Update total pages
 
         final category = data["data"] as List;
@@ -269,12 +269,11 @@ class ApiService {
       } else {
         throw Exception('Failed to fetch categories: ${response.reasonPhrase}');
       }
-    } catch (e) { 
+    } catch (e) {
       print("Error fetching categories: $e");
       return [];
     }
   }
-
 
   // create category //
   Future<bool> createCategory(Map<String, dynamic> categorydata) async {
@@ -349,18 +348,22 @@ class ApiService {
 
 // Supplier list page//
 
-  Future<List<Map<String, dynamic>>> fetchsupplier() async {
-    final url = '$baseUrl/supplier/sup_all';
+//  int totalPages = 1; // Store total pages globally
+  Future<List<Map<String, dynamic>>> fetchsupplier(
+      {int page = 1, int limit = 10}) async {
+    final url = '$baseUrl/supplier/sup_all?page=$page&limit=$limit';
     try {
       final response = await _makeRequest(url, 'GET');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         print('asd: $data');
-        final supplier = data as List;
+        // totalPages = data["totalPages"];
+        final supplier = data["data"] as List;
         print("Fetched Users: $supplier");
 
         return supplier.map((supplier) {
           return {
+            "supplier_id": supplier["supplier_id"].toString(),
             "company_name": supplier["company_name"] ?? "Unknown",
             "phone_number": supplier["phone_number"] ?? "No Contact",
             "email": supplier["email"] ?? "No Email",
@@ -379,11 +382,11 @@ class ApiService {
   }
 
   // create supplier//
-   Future<bool> createSupplier(Map<String, dynamic> supplierData) async {
-  final url = '$baseUrl/supplier/sup_insert';
-  final body = supplierData;
+  Future<bool> createSupplier(Map<String, dynamic> supplierData) async {
+    final url = '$baseUrl/supplier/sup_insert';
+    final body = supplierData;
 
-   try {
+    try {
       final response = await _makeRequest(url, 'POST', body: body);
 
       if (response.statusCode == 201) {
@@ -396,6 +399,119 @@ class ApiService {
       print("Error: $e");
       return false;
     }
+  }
 
+  Future<bool> updateSupplier(
+      String supplier_id, Map<String, dynamic> data) async {
+    final Uri url = Uri.parse('$baseUrl/supplier/sup_update/$supplier_id');
+    // print("Updated supplier: $data");
+    print("Updated id: $supplier_id");
+
+    try {
+      final response = await _makeRequest(
+        url.toString(),
+        'PUT', // Use 'PUT' or 'PATCH' based on your API
+        body: data, // Send the body as JSON
+      );
+
+      if (response.statusCode == 200) {
+        return true; // Successfully updated
+      } else {
+        print(
+            'Failed to update user: ${response.statusCode}, ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating user: $e');
+      return false;
+    }
+  }
+  // delete supplier//
+   Future<void> deleteSupplierFromApi(String supplier_id, VoidCallback onDelete) async {
+  final Uri url = Uri.parse('$baseUrl/supplier/sup_del/$supplier_id');
+
+try {
+      final response =
+          await _makeRequest(url.toString(), "DELETE"); // Direct delete request
+
+
+    if (response.statusCode == 200) {
+      print('Supplier deleted successfully.');
+      onDelete(); // Update UI after deletion
+    } else {
+      final data = jsonDecode(response.body);
+      throw Exception('Error deleting supplier: ${data['message'] ?? response.body}');
+    }
+  } catch (e) {
+    print('Error during supplier deletion: $e');
+    throw e; // Rethrow for handling in UI
+  }
 }
+
+// product list//
+Future<List<Map<String, dynamic>>> fetchProducts({int page = 1, int limit = 10}) async {
+  final url = '$baseUrl/products/Allpro_pagination?page=$page&limit=$limit';
+  try {
+    final response = await _makeRequest(url, 'GET');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final productList = data["data"] as List;
+      return productList.map((product) {
+        return {
+          "id": product["id"].toString(),
+          "product_name": product["product_name"] ?? "Unknown",
+          "brand_name": product["brand_name"] ?? "No Brand",
+          "product_category": product["product_category"] ?? "No Category",
+          "expiry_date": product["expiry_date"] ?? "No Expiry Date",
+          "product_quantity": product["product_quantity"].toString(),
+        };
+      }).toList();
+    } else {
+      throw Exception('Failed to fetch products: ${response.reasonPhrase}');
+    }
+  } catch (e) {
+    print("Error fetching products: $e");
+    return [];
+  }
+}
+
+// create product //
+
+
+  Future<bool> createProduct(Map<String, dynamic> productData) async {
+    final url = '$baseUrl/products/inproduct';
+    final body = productData;
+    print('Requt Body: $body');
+
+    try {
+      final response = await _makeRequest(url, 'POST', body: body);
+
+      if (response.statusCode == 201) {
+        return true;
+      } else {
+        print("Failed: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error: $e");
+      return false;
+    }
+  }
+
+  // Fetch Supplier Names
+  Future<List<String>> fetchSupplierNames() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/products/Allpro_list'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return List<String>.from(data['data'].map((s) => s['supplier']));
+      } else {
+        throw Exception('Failed to load supplier names');
+      }
+    } catch (e) {
+      print("Error fetching suppliers: $e");
+      return [];
+    }
+  }
 }

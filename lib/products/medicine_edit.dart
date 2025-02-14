@@ -4,11 +4,10 @@ import 'package:flutter_application_1/products/DropdownComponent.dart';
 import 'package:flutter_application_1/products/create_product.dart';
 
 class Medicineedit extends StatefulWidget {
-  final Function(Map<String, String>) onAddProduct;
-  final Map<String, String>
-      product; // Adding product to initialize the form with existing values
+   final Map<String, dynamic> product;
+  final Function(Map<String, dynamic>) onAddProduct; // Adding product to initialize the form with existing values
 
-  Medicineedit({required this.onAddProduct, required this.product});
+  Medicineedit({required this.product, required this.onAddProduct});
 
   @override
   _MedicineeditState createState() => _MedicineeditState();
@@ -21,8 +20,10 @@ class _MedicineeditState extends State<Medicineedit> {
   late TextEditingController _expiryDateController;
   late TextEditingController _batchnoNameController;
   late TextEditingController _qtyController;
+  late TextEditingController _genericNameController;
   late TextEditingController _mrpPriceController;
   late TextEditingController _supplierPriceController;
+  late TextEditingController _mfdController; // Added MFD field
   late TextEditingController _descriptionController;
   late TextEditingController _discountPercentageController;
   late TextEditingController _supplierNameController;
@@ -34,7 +35,7 @@ class _MedicineeditState extends State<Medicineedit> {
   String? _selectedCategory;
   String? _availabilityStatus;
 
-  late TextEditingController _genericNameController;
+  
 
   @override
   void initState() {
@@ -47,6 +48,7 @@ class _MedicineeditState extends State<Medicineedit> {
         TextEditingController(text: widget.product['category']);
     _expiryDateController =
         TextEditingController(text: widget.product['expiryDate']);
+        _mfdController = TextEditingController(text: widget.product['mfd']);
     _batchnoNameController =
         TextEditingController(text: widget.product['batchnoName']);
     _qtyController = TextEditingController(text: widget.product['qty']);
@@ -78,6 +80,7 @@ class _MedicineeditState extends State<Medicineedit> {
     _batchnoNameController.dispose();
     _qtyController.dispose();
     _genericNameController.dispose();
+    _mfdController.dispose();
     _mrpPriceController.dispose();
     _supplierPriceController.dispose();
     _descriptionController.dispose();
@@ -95,6 +98,7 @@ class _MedicineeditState extends State<Medicineedit> {
         'brand': _brandController.text,
         'category': _categoryController.text,
         'expiryDate': _expiryDateController.text,
+        'mfd': _mfdController.text, // Added MFD field
         'batchnoName': _batchnoNameController.text,
         'qty': _qtyController.text,
         'genericName': _genericNameController.text,
@@ -191,6 +195,14 @@ class _MedicineeditState extends State<Medicineedit> {
                     ? 'Please enter MRP price'
                     : null,
               ),
+                TextFieldComponent(
+                label: 'Supplier Price',
+                controller: _supplierPriceController,
+                keyboardType: TextInputType.number,
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Please enter MRP price'
+                    : null,
+              ),
               TextFieldComponent(
                 label: 'Supplier Price',
                 controller: _supplierPriceController,
@@ -215,6 +227,19 @@ class _MedicineeditState extends State<Medicineedit> {
                     ? 'Please enter discount percentage'
                     : null,
               ),
+               MFDDateFieldComponent(
+                controller: _expiryDateController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select an MFD date';
+                  }
+                  final regex = RegExp(r'^\d{2}\/\d{2}\/\d{2}$');
+                  if (!regex.hasMatch(value)) {
+                    return 'Invalid MFD date format';
+                  }
+                  return null;
+                }, label: 'MFD Date',
+              ),
               DateFieldComponent(
                 controller: _expiryDateController,
                 validator: (value) {
@@ -226,7 +251,7 @@ class _MedicineeditState extends State<Medicineedit> {
                     return 'Invalid expiry date format';
                   }
                   return null;
-                },
+                }, label: 'Expiry Date',
               ),
               TextFieldComponent(
                 label: 'Supplier Name',
@@ -235,14 +260,14 @@ class _MedicineeditState extends State<Medicineedit> {
                     ? 'Please enter supplier name'
                     : null,
               ),
-              TextFieldComponent(
-                label: 'GST %',
-                controller: _gstController,
-                keyboardType: TextInputType.number,
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter GST percentage'
-                    : null,
+              GSTDropdownField(
+                label: 'GST Number',
+                items: ['5%', '12%', '18%', '28%'],
+                selectedValue: _selectedCategory,
+                onChanged: (value) { setState(() { _selectedCategory = value; }); },
+                validator: (value) => value == null ? 'Please select a GST Value' : null,
               ),
+
                SizedBox(height: 10,),
                 Text('Availability Status',style: TextStyle(fontSize: 18,
             fontWeight: FontWeight.bold,),),

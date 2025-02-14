@@ -9,23 +9,31 @@ class StaffPage extends StatefulWidget {
   @override
   _StaffPageState createState() => _StaffPageState();
 }
+
 final ApiService apiService = ApiService();
 
 class _StaffPageState extends State<StaffPage> {
   List<Map<String, String>> staffList = [];
   bool _isLoading = true;
+ int _currentPage = 1;
+  bool _isFetchingMore = false;
+  final int _limit = 10; // Number of items per page
+  bool _hasMore = true;
 
-  Future<void> fetchAndDisplayTasks() async {
+
+  Future<void> fetchAndDisplayTasks({bool isLoadMore = false}) async {
     final token = await apiService.getTokenFromStorage();
+        if (_isFetchingMore) return;
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are not logged in. Please log in first.')),
+        const SnackBar(
+            content: Text('You are not logged in. Please log in first.')),
       );
       return;
     }
 
     try {
-      final fetchedUsers = await apiService.fetchUsers();
+      final fetchedUsers = await apiService.fetchUsers(page: _currentPage, limit: _limit);
       setState(() {
         staffList = fetchedUsers;
         _isLoading = false;
@@ -36,7 +44,8 @@ class _StaffPageState extends State<StaffPage> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to fetch staff. Please try again later.')),
+        const SnackBar(
+            content: Text('Failed to fetch staff. Please try again later.')),
       );
     }
   }
@@ -52,7 +61,8 @@ class _StaffPageState extends State<StaffPage> {
     fetchAndDisplayTasks();
     _scrollController.addListener(() {
       setState(() {
-        isScrolled = _scrollController.offset > 10; // Adjust threshold as needed
+        isScrolled =
+            _scrollController.offset > 10; // Adjust threshold as needed
       });
     });
   }
@@ -78,7 +88,8 @@ class _StaffPageState extends State<StaffPage> {
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 24,
-                      fontWeight: FontWeight.bold, // Bold text for better visibility
+                      fontWeight:
+                          FontWeight.bold, // Bold text for better visibility
                     ),
                   ),
                 ),
@@ -102,12 +113,21 @@ class _StaffPageState extends State<StaffPage> {
             : ListView.builder(
                 itemCount: staffList.length,
                 itemBuilder: (context, index) {
-                  if (_searchController.text.isNotEmpty &&
-                      !staffList[index]['name']!
-                          .toLowerCase()
-                          .contains(_searchController.text.toLowerCase())) {
-                    return Container();
+                  String query = _searchController.text.toLowerCase();
+
+                  if (query.isNotEmpty &&
+                      !((staffList[index]['name'] ?? '')
+                              .toLowerCase()
+                              .contains(query) ||
+                          (staffList[index]['phone'] ?? '')
+                              .toLowerCase()
+                              .contains(query) ||
+                          (staffList[index]['email'] ?? '')
+                              .toLowerCase()
+                              .contains(query))) {
+                    return Container(); // Hide items that do not match
                   }
+
                   return StaffCard(
                     staff: staffList[index],
                     onDelete: () {},

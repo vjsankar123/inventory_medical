@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 // Modified ProductDetailsPage with Close button at the bottom
 class ProductDetailsPage extends StatelessWidget {
-  final Map<String, String> product;
+    final Map<String, dynamic> product;
 
-  ProductDetailsPage({required this.product});
+ ProductDetailsPage({required this.product});
 
   @override
   Widget build(BuildContext context) {
@@ -48,20 +48,22 @@ class ProductDetailsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailRow('Name', product['name']),
-                _buildDetailRow('Brand Name', product['brand']),
-                _buildDetailRow('Category', product['category']),
-                _buildDetailRow('Generic Name', product['generic']),
-                _buildDetailRow('Batch No', product['batch']),
-                _buildDetailRow('MRP Price', product['MRP Price']),
-                _buildDetailRow('Supplier Price', product['supplier']),
-                _buildDetailRow('Description', product['description']),
-                _buildDetailRow('Discount Percentage', product['discount']),
+                _buildDetailRow('Name', product['product_name']),
+                _buildDetailRow('Brand Name', product['brand_name']),
+                _buildDetailRow('Category', product['product_category']),
+                _buildDetailRow('Generic Name', product['generic_name']),
+                _buildDetailRow('Batch No', product['product_batch_no']),
+                _buildDetailRow('MRP Price', product['product_price']),
+                _buildDetailRow('Supplier Price', product['supplier_price']),
+                _buildDetailRow('Description', product['product_description']),
+                _buildDetailRow('Discount Percentage', product['product_discount']),
+                _buildDetailRow('Selling Price', product['selling_price']),
                 _buildDetailRow('Supplier Name', product['supplier']),
-                _buildDetailRow('Expiry Date', product['expiryDate']),
+                _buildDetailRow('Mfg Date', product['MFD']),
+                _buildDetailRow('Expiry Date', product['expiry_date']),
                 _buildDetailRow('GST %', product['GST']),
-                _buildDetailRow('Availability Status', product['availability']),
-                _buildDetailRow('Quantity', product['qty']),
+                _buildDetailRow('Availability Status', product['stock_status']),
+                _buildDetailRow('Quantity', product['product_quantity']),
                 SizedBox(height: 20), // Space before the button
                 Center(
                   child: ElevatedButton(
@@ -94,33 +96,34 @@ class ProductDetailsPage extends StatelessWidget {
   }
 
   // Helper method to build each detail row
-  Widget _buildDetailRow(String title, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text(
-            '$title:',
+ Widget _buildDetailRow(String title, dynamic value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$title:',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            value?.toString() ?? 'N/A', // Convert all values to String safely
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: Colors.black54,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2, // Prevents UI breakage with long texts
           ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              value ?? 'N/A',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.black54,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }

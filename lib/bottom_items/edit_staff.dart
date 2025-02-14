@@ -36,14 +36,12 @@ class _EditStaffPageState extends State<EditStaffPage> {
     passwordController =
         TextEditingController(text: widget.staffData['password'] ?? '');
     _passwordConfirmationController =
-        TextEditingController(text: widget.staffData['confim_password'] ?? '');
+        TextEditingController(text: widget.staffData['confirm_password'] ?? '');
 
     phoneController =
         TextEditingController(text: widget.staffData['contact_number'] ?? '');
-    aadhaarController =
-        TextEditingController(text: widget.staffData['user_id_proof'] ?? '');
-    addressController =
-        TextEditingController(text: widget.staffData['address_details'] ?? '');
+    aadhaarController = TextEditingController(text: widget.staffData['user_id_proof'] ?? '');
+  addressController = TextEditingController(text: widget.staffData['address_details'] ?? '');
 
     // Normalize role (convert to Title Case)
     String role = widget.staffData['role']?.toString().toLowerCase() ?? 'staff';
@@ -52,6 +50,7 @@ class _EditStaffPageState extends State<EditStaffPage> {
     } else {
       selectedRole = 'Staff';
     }
+     setState(() {}); // Force UI to refresh
   }
 
   @override
@@ -60,6 +59,7 @@ class _EditStaffPageState extends State<EditStaffPage> {
     contactController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    _passwordConfirmationController.dispose();
     aadhaarController.dispose();
     phoneController.dispose();
     addressController.dispose();
@@ -71,7 +71,7 @@ class _EditStaffPageState extends State<EditStaffPage> {
       "username": nameController.text,
       "email": emailController.text,
       "password": passwordController.text,
-      "confim_password": _passwordConfirmationController,
+      "confirm_password": _passwordConfirmationController.text,
       "role": selectedRole,
       "contact_number": contactController.text,
       "address_details": addressController.text,
@@ -98,51 +98,51 @@ class _EditStaffPageState extends State<EditStaffPage> {
     }
   }
 
-  void _showSaveConfirmation() {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
-      ),
-      builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Confirm Save',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.0),
-              ),
-              SizedBox(height: 10),
-              Text('Are you sure you want to save these changes?'),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child:
-                        Text('Cancel', style: TextStyle(color: Colors.white)),
-                  ),
-                  ElevatedButton(
-                    onPressed: _updateUser,
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    child: Text('Save', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  // void _showSaveConfirmation() {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     shape: RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+  //     ),
+  //     builder: (BuildContext context) {
+  //       return Padding(
+  //         padding: const EdgeInsets.all(16.0),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Text(
+  //               'Confirm Save',
+  //               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.0),
+  //             ),
+  //             SizedBox(height: 10),
+  //             Text('Are you sure you want to save these changes?'),
+  //             SizedBox(height: 20),
+  //             Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //               children: [
+  //                 ElevatedButton(
+  //                   onPressed: () {
+  //                     Navigator.pop(context);
+  //                   },
+  //                   style:
+  //                       ElevatedButton.styleFrom(backgroundColor: Colors.red),
+  //                   child:
+  //                       Text('Cancel', style: TextStyle(color: Colors.white)),
+  //                 ),
+  //                 ElevatedButton(
+  //                   onPressed: _updateUser,
+  //                   style:
+  //                       ElevatedButton.styleFrom(backgroundColor: Colors.green),
+  //                   child: Text('Save', style: TextStyle(color: Colors.white)),
+  //                 ),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -178,14 +178,14 @@ class _EditStaffPageState extends State<EditStaffPage> {
                   'Confirm Password', _passwordConfirmationController,
                   obscureText: true),
               SizedBox(height: 10),
-              _buildTextField('Aadhaar ID', aadhaarController),
+_buildTextField('Aadhaar ID', aadhaarController),
               SizedBox(height: 20),
               _buildDropdown(),
               SizedBox(height: 20),
-              _buildTextArea('Address', addressController),
+_buildTextArea('Address', addressController),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () => _showSaveConfirmation(),
+                onPressed: _updateUser,
                 style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF028090)),
                 child: Text(

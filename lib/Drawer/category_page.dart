@@ -33,6 +33,9 @@ class _CategoryPageState extends State<CategoryPage> {
   //   super.initState();
   //   filteredCategories = List.from(categories);
   // }
+
+
+  
   Future<void> fetchAndDisplayCategory({bool isLoadMore = false}) async {
     if (_isFetchingMore) return;
 
@@ -452,6 +455,7 @@ class _CategoryPageState extends State<CategoryPage> {
         backgroundColor: Color(0xFF028090),
         tooltip: 'Add Category',
       ),
+       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     );
   }
 }

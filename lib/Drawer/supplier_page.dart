@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/API_Service/api_service.dart';
+import 'package:flutter_application_1/Drawer/edit_supplier.dart';
 import 'package:flutter_application_1/bottom_items/staff_page.dart';
 import 'package:flutter_application_1/dashboard/persistent_bottom_nav_bar.dart';
 import 'supplier_form.dart';
+// import 'edit_supplier_form.dart'; // Add this line to import the EditSupplierForm
 
 class SupplierPage extends StatefulWidget {
   @override
@@ -17,38 +19,51 @@ class _SupplierPageState extends State<SupplierPage> {
   List<Map<String, dynamic>> filteredData = [];
   bool isSearching = false;
   bool _isLoading = true;
-  TextEditingController _searchController = TextEditingController();
+  int _currentPage = 1;
+  bool _isFetchingMore = false;
+  final int _pageSize = 10;
+
+  // TextEditingController _searchController = TextEditingController();
   ScrollController _scrollController = ScrollController();
   bool isScrolled = false;
 
-  Future<void> fetchAndDisplaysupplier() async {
-    final token = await apiService.getTokenFromStorage();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You are not logged in. Please log in first.')),
-      );
-      return;
-    }
-
-    try {
-      final fetchedSuppliers = await apiService.fetchsupplier();
-      setState(() {
-        filteredData = fetchedSuppliers;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error: $e');
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Failed to fetch suppliers. Please try again later.')),
-      );
-    }
+  Future<void> fetchAndDisplaysupplier({int page = 1, int limit = 10}) async {
+  final token = await apiService.getTokenFromStorage();
+  if (token == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You are not logged in. Please log in first.'),
+      ),
+    );
+    return;
   }
+
+  try {
+    final fetchedSuppliers = await apiService.fetchsupplier(page: page, limit: limit);
+    setState(() {
+      if (page == 1) {
+        supplierList = fetchedSuppliers; // First page, replace list
+      } else {
+        supplierList.addAll(fetchedSuppliers); // Append more data
+      }
+      filteredData = supplierList;
+      _isLoading = false;
+      _isFetchingMore = false; // Reset loading state
+    });
+  } catch (e) {
+    print('Error: $e');
+    setState(() {
+      _isLoading = false;
+      _isFetchingMore = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Failed to fetch suppliers. Please try again later.'),
+      ),
+    );
+  }
+}
+
 
   // To track whether the header needs a shadow
 
@@ -56,6 +71,13 @@ class _SupplierPageState extends State<SupplierPage> {
   void initState() {
     super.initState();
     fetchAndDisplaysupplier();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        _loadMoreData();
+      }
+    });
   }
 
   //   @override
@@ -68,6 +90,17 @@ class _SupplierPageState extends State<SupplierPage> {
   //     });
   //   });
   // }
+
+  void _loadMoreData() {
+    if (_isFetchingMore) return; // Prevent multiple calls
+
+    setState(() {
+      _isFetchingMore = true;
+    });
+
+    _currentPage++;
+    fetchAndDisplaysupplier(page: _currentPage, limit: _pageSize);
+  }
 
   void searchSuppliers(String query) {
     final results = supplierList.where((item) {
@@ -119,9 +152,9 @@ class _SupplierPageState extends State<SupplierPage> {
       backgroundColor: Colors.white,
       context: context,
       builder: (context) {
-        return SupplierForm(
-          initialSupplier: supplier.cast<String, String>(),
-          onAddSupplier: (editedSupplier) {
+        return EditSupplierForm(
+          supplierData: supplier.cast<String, String>(),
+          onSave: (editedSupplier) {
             setState(() {
               int index = supplierList.indexOf(supplier);
               if (index != -1) {
@@ -135,40 +168,50 @@ class _SupplierPageState extends State<SupplierPage> {
     );
   }
 
-  void deleteSupplier(Map<String, dynamic> supplier) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Confirm Deletion'),
-          content: const Text('Are you sure you want to delete this supplier?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog without deleting
-              },
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  supplierList
-                      .remove(supplier); // Remove supplier from the list
-                  filteredData = supplierList; // Update the filtered list
+void deleteSupplier(Map<String, dynamic> supplier) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this supplier?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog without deleting
+            },
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close the dialog before API call
+
+              final supplierId = supplier['supplier_id'].toString(); // Get supplier ID
+              try {
+                await apiService.deleteSupplierFromApi(supplierId, () {
+                  setState(() {
+                    supplierList.removeWhere((item) => item['supplier_id'] == supplierId);
+                    filteredData = List.from(supplierList);
+                  });
                 });
-                Navigator.pop(context); // Close the dialog after deletion
-              },
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
-              ),
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to delete supplier: $e')),
+                );
+              }
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
             ),
-          ],
-        );
-      },
-    );
-  }
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   void viewSupplierDetails(Map<String, String> supplier) {
     showDialog(
@@ -299,19 +342,29 @@ class _SupplierPageState extends State<SupplierPage> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: filteredData.length,
+                controller: _scrollController,
+                itemCount:
+                    filteredData.length + 1, // Extra item for loading indicator
                 itemBuilder: (context, index) {
+                  if (index == filteredData.length) {
+                    return _isFetchingMore
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(
+                                  color: Color(0xFF028090)),
+                            ),
+                          )
+                        : SizedBox(); // Don't show anything if not loading
+                  }
+
                   final item = filteredData[index];
                   return Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(
-                        color: Colors.black,
-                        width: 2,
-                      ),
+                      side: const BorderSide(color: Colors.black, width: 2),
                     ),
                     margin: const EdgeInsets.all(10),
-                    // elevation: 5,
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,

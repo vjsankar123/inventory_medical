@@ -18,28 +18,41 @@ class TextFieldComponent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        // Text(
+        //   label,
+        //   style: TextStyle(
+        //     fontSize: 18,
+        //     fontWeight: FontWeight.bold,
+        //   ),
+        // ),
         SizedBox(height: 8),
         TextFormField(
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(
-                color: Color(0xFF028090),
-                width: 2.0,
-              ),
-            ),
-            
+         decoration: InputDecoration(
+        labelText: label, // Set label text dynamically
+          // contentPadding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+        labelStyle: TextStyle(
+          fontSize: 18.0,
+          fontWeight: FontWeight.w600,
+          color: Colors.black,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Colors.black,
+            width: 2.0,
           ),
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Color(0xFF028090),
+            width: 2.0,
+          ),
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+      ),
           cursorColor: Color(0xFF028090),
           controller: controller,
           keyboardType: keyboardType,

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/API_Service/api_service.dart';
 
-class SupplierForm extends StatefulWidget {
-  final Function(Map<String, dynamic>) onAddSupplier;
-  final Map<String, dynamic>? initialSupplier;
+class EditSupplierForm extends StatefulWidget {
+  final Function(Map<String, dynamic>) onSave;
+  final Map<String, dynamic> supplierData;
 
-  SupplierForm({required this.onAddSupplier, this.initialSupplier});
+  EditSupplierForm({required this.onSave, required this.supplierData});
 
   @override
-  _SupplierFormState createState() => _SupplierFormState();
+  _EditSupplierFormState createState() => _EditSupplierFormState();
 }
 
-class _SupplierFormState extends State<SupplierForm> {
+class _EditSupplierFormState extends State<EditSupplierForm> {
   final ApiService apiService = ApiService();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -25,62 +25,54 @@ class _SupplierFormState extends State<SupplierForm> {
 
   String _status = 'Active';
   bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
-    if (widget.initialSupplier != null) {
-      _nameController.text = widget.initialSupplier!['company_name'] ?? '';
-      _phoneController.text = widget.initialSupplier!['phone_number'] ?? '';
-      _emailController.text = widget.initialSupplier!['email'] ?? '';
-      _addressController.text = widget.initialSupplier!['address'] ?? '';
-      _gstController.text =
-          widget.initialSupplier!['supplier_gst_number'] ?? '';
-      _postalController.text = widget.initialSupplier!['postal_code'] ?? '';
-      _cityController.text = widget.initialSupplier!['city'] ?? '';
-      _stateController.text = widget.initialSupplier!['state'] ?? '';
-      _countryController.text = widget.initialSupplier!['country'] ?? '';
-
-      // Fix: Ensure _status is valid
-      String initialStatus = widget.initialSupplier!['status'] ?? 'Active';
-      if (['Active', 'Inactive'].contains(initialStatus)) {
-        _status = initialStatus;
-      } else {
-        _status = 'Active'; // Default value to avoid errors
-      }
-    }
+    _nameController.text = widget.supplierData['company_name'] ?? '';
+    _phoneController.text = widget.supplierData['phone_number'] ?? '';
+    _emailController.text = widget.supplierData['email'] ?? '';
+    _addressController.text = widget.supplierData['address'] ?? '';
+    _gstController.text = widget.supplierData['supplier_gst_number'] ?? '';
+    _postalController.text = widget.supplierData['postal_code'] ?? '';
+    _cityController.text = widget.supplierData['city'] ?? '';
+    _stateController.text = widget.supplierData['state'] ?? '';
+    _countryController.text = widget.supplierData['country'] ?? '';
+    _status = widget.supplierData['status'] ?? 'Active';
   }
 
-  void _registersupplier() async {
-    Map<String, dynamic> supplierData = {
-      "company_name": _nameController.text,
-      "email": _emailController.text,
-      "phone_number": _phoneController.text,
-      "address": _addressController.text,
-      "supplier_gst_number": _gstController.text,
-      "postal_code": _postalController.text,
-      "city": _cityController.text,
-      "state": _stateController.text,
-      "country": _countryController.text,
-      "status": _status,
-    };
+  // void _updateSupplier() async {
+  //   setState(() => _isLoading = true);
 
-    bool success = await apiService.createSupplier(supplierData);
+  //   Map<String, dynamic> updatedData = {
+  //     "company_name": _nameController.text,
+  //     "email": _emailController.text,
+  //     "phone_number": _phoneController.text,
+  //     "address": _addressController.text,
+  //     "supplier_gst_number": _gstController.text,
+  //     "postal_code": _postalController.text,
+  //     "city": _cityController.text,
+  //     "state": _stateController.text,
+  //     "country": _countryController.text,
+  //     "status": _status,
+  //   };
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('User created successfully!'),
-            backgroundColor: Colors.green),
-      );
-      Navigator.pop(context); // Close modal
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Failed to create user.'),
-            backgroundColor: Colors.red),
-      );
-    }
-  }
+  //   // bool success = await apiService.updateSupplier(widget.supplierData['id'], updatedData);
+    
+  //   setState(() => _isLoading = false);
+    
+  //   if (success) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Supplier updated successfully!'), backgroundColor: Colors.green),
+  //     );
+  //     widget.onUpdateSupplier(updatedData);
+  //     Navigator.pop(context);
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to update supplier.'), backgroundColor: Colors.red),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -90,8 +82,7 @@ class _SupplierFormState extends State<SupplierForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Add New Supplier',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text('Edit Supplier', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             _buildTextField(_nameController, 'Company Name'),
             _buildTextField(_phoneController, 'Phone No'),
@@ -112,9 +103,7 @@ class _SupplierFormState extends State<SupplierForm> {
                 border: Border.all(color: Colors.black),
               ),
               child: DropdownButton<String>(
-                value: ['Active', 'Inactive'].contains(_status)
-                    ? _status
-                    : 'Active', // Ensure a valid value
+                value: _status,
                 onChanged: (newValue) {
                   setState(() {
                     _status = newValue!;
@@ -140,21 +129,21 @@ class _SupplierFormState extends State<SupplierForm> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : () => Navigator.pop(context),
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text('Cancel',
-                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.white)),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _registersupplier,
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF028090)),
+                    // onPressed: _updateSupplier,
+                    onPressed: (){
+                      
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF028090)),
                     child: _isLoading
                         ? CircularProgressIndicator(color: Colors.white)
-                        : const Text('Add'),
+                        : const Text('Update'),
                   ),
                 ),
               ],

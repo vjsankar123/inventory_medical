@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/API_Service/api_service.dart';
 import 'package:flutter_application_1/products/MedicineForm.dart';
 import 'package:flutter_application_1/products/create_product.dart';
 import 'package:flutter_application_1/products/medicine_edit.dart';
@@ -16,28 +17,24 @@ class ProductList extends StatefulWidget {
   @override
   _ProductListState createState() => _ProductListState();
 }
+final ApiService apiService = ApiService();
 
 class _ProductListState extends State<ProductList>
+
     with SingleTickerProviderStateMixin {
-  int _rowsPerPage = 10;
-  int _currentPage = 0;
+       final ApiService apiService = ApiService();
+  List<Map<String, dynamic>> products = [];
+  bool _isLoading = true;
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  List<Map<String, String>> products = List.generate(
-    5,
-    (index) => {
-      'sno': (index + 1).toString(),
-      'name': 'Name ${index + 1}',
-      'brand': 'Brand ${index + 1}',
-      'category': 'Category ${index + 1}',
-      'expiryDate': '2025-01-${(index + 1).toString().padLeft(2, '0')}',
-      'qty': '${(index + 1) * 5}',
-    },
-  );
+
+  
+ 
+  
 
   void _bulkInsert() {
     setState(() {
@@ -61,7 +58,7 @@ class _ProductListState extends State<ProductList>
     });
   }
 
-  void _editProduct(Map<String, String> product) {
+  void _editProduct(Map<String, dynamic> product) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -77,80 +74,90 @@ class _ProductListState extends State<ProductList>
       ),
     );
   }
+ void initState() {
+    super.initState();
+    _fetchProducts();
+    _controller = AnimationController(
+      duration: Duration(seconds: 1),
+      vsync: this,
+    );
+    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _controller.repeat(reverse: true);
+  }
 
-  void _deleteProduct(Map<String, String> product) {
+  Future<void> _fetchProducts() async {
+    try {
+      List<Map<String, dynamic>> fetchedProducts = await apiService.fetchProducts();
+      setState(() {
+        products = fetchedProducts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching products: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  
+
+  void _deleteProduct(Map<String, dynamic> product) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            dialogBackgroundColor:
-                Colors.white, // Set the background color of the dialog
-          ),
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            title: Text(
-              'Confirm Delete',
-              style: TextStyle(color: Colors.black), // Title text color
+        return AlertDialog(
+          title: Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete this product?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
             ),
-            content: Text(
-              'Are you sure you want to delete this product?',
-              style: TextStyle(color: Colors.black), // Content text color
+            TextButton(
+              onPressed: () async {
+                // await apiService.deleteProduct(product['id']);
+                _fetchProducts();
+                Navigator.of(context).pop();
+              },
+              child: Text('OK', style: TextStyle(color: Colors.red)),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    products.remove(product);
-                  });
-                  Navigator.of(context).pop();
-                },
-                child: Text(
-                  'OK',
-                  style:
-                      TextStyle(color: const Color.fromARGB(255, 179, 32, 21)),
-                ),
-              ),
-            ],
-          ),
+          ],
         );
       },
     );
   }
 
-  void _viewProduct(Map<String, String> product) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductDetailsPage(product: product),
-      ),
-    );
-  }
 
-  @override
-  void initState() {
-    super.initState();
+void _viewProduct(Map<String, dynamic> product) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ProductDetailsPage(product: product),
+    ),
+  );
+}
 
-    _controller = AnimationController(
-      duration: Duration(seconds: 1),
-      vsync: this,
-    );
 
-    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+  // @override
+  // void initState() {
+  // //   super.initState();
 
-    _controller.repeat(reverse: true);
-  }
+  // //   _controller = AnimationController(
+  // //     duration: Duration(seconds: 1),
+  // //     vsync: this,
+  // //   );
+
+  // //   _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+  // //     CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+  // //   );
+
+  // //   _controller.repeat(reverse: true);
+  // // }
 
   @override
   void dispose() {
@@ -273,11 +280,14 @@ class _ProductListState extends State<ProductList>
           ],
         ),
         backgroundColor: Colors.white,
-        body: Padding(
+        body:_isLoading
+            ? Center(child: CircularProgressIndicator())
+            
+         :Padding(
           padding: const EdgeInsets.all(16.0),
           child: ListView.builder(
             itemCount: products.length,
-            itemBuilder: (context, index) {
+                itemBuilder: (context, index) {
               final product = products[index];
               return Container(
                 margin: EdgeInsets.symmetric(vertical: 10.0),
@@ -304,7 +314,7 @@ class _ProductListState extends State<ProductList>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Name: ${product['name'] ?? 'N/A'}',
+                        'Name: ${product['product_name'] ?? 'N/A'}',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -313,19 +323,19 @@ class _ProductListState extends State<ProductList>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Brand: ${product['brand'] ?? 'N/A'}',
+                        'Brand: ${product['brand_name'] ?? 'N/A'}',
                         style: TextStyle(fontSize: 16, color: Colors.black54),
                       ),
                       Text(
-                        'Category: ${product['category'] ?? 'N/A'}',
+                        'Category: ${product['product_category'] ?? 'N/A'}',
                         style: TextStyle(fontSize: 16, color: Colors.black54),
                       ),
                       Text(
-                        'Expiry Date: ${product['expiryDate'] ?? 'N/A'}',
+                        'Expiry Date: ${product['expiry_date'] ?? 'N/A'}',
                         style: TextStyle(fontSize: 16, color: Colors.black54),
                       ),
                       Text(
-                        'Quantity: ${product['qty'] ?? '0'}',
+                        'Quantity: ${product['product_quantity'] ?? '0'}',
                         style: TextStyle(fontSize: 16, color: Colors.black54),
                       ),
                       SizedBox(height: 10),
@@ -369,15 +379,19 @@ class _ProductListState extends State<ProductList>
             return Opacity(
               opacity: _opacityAnimation.value,
               child: FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          MedicineForm(onAddProduct: _addProduct, product: {}),
-                    ),
-                  );
-                },
+                 onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MedicineForm(
+                  onAddProduct: (newProduct) {
+                    _fetchProducts();
+                  },
+                  product: {},
+                ),
+              ),
+            );
+          },
                 child: Icon(Icons.add, color: Colors.white, size: 30.0),
                 backgroundColor: Color.fromRGBO(2, 116, 131, 1),
                 shape: RoundedRectangleBorder(
@@ -391,68 +405,4 @@ class _ProductListState extends State<ProductList>
       ),
     );
   }
-}
-
-class ProductDataSource extends DataTableSource {
-  final List<Map<String, String>> products;
-  final int currentPage;
-  final int rowsPerPage;
-  final Function(Map<String, String>) editProduct;
-  final Function(Map<String, String>) deleteProduct;
-  final Function(Map<String, String>) viewProduct;
-
-  ProductDataSource(
-    this.products,
-    this.currentPage,
-    this.rowsPerPage,
-    this.editProduct,
-    this.deleteProduct,
-    this.viewProduct,
-  );
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  DataRow getRow(int index) {
-    int productIndex = currentPage * rowsPerPage + index;
-    if (productIndex >= products.length) return DataRow(cells: []);
-
-    var product = products[productIndex];
-
-    return DataRow(cells: [
-      DataCell(Text((productIndex + 1).toString())),
-      DataCell(Text(product['brand'] ?? 'N/A')),
-      // DataCell(Text(product['brand'] ?? 'N/A')),
-      DataCell(Text(product['category'] ?? 'N/A')),
-      DataCell(Text(product['expiryDate'] ?? 'N/A')),
-      DataCell(Text(product['qty'] ?? '0')),
-      DataCell(Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: Icon(Icons.visibility, color: Color(0xFF028090)),
-            onPressed: () => viewProduct(product),
-          ),
-          IconButton(
-            icon: Icon(Icons.edit_note, color: Colors.orange),
-            onPressed: () => editProduct(product),
-          ),
-          IconButton(
-            icon: Icon(Icons.delete_sweep, color: Colors.red),
-            onPressed: () => deleteProduct(product),
-          ),
-        ],
-      )),
-    ]);
-  }
-
-  @override
-  int get rowCount => products.length;
-
-  @override
-  bool get hasMoreRows => currentPage * rowsPerPage < products.length;
-
-  @override
-  int get selectedRowCount => 0;
 }

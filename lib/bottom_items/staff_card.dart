@@ -68,6 +68,7 @@ class _StaffCardState extends State<StaffCard> {
               child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircleAvatar(
                       radius: 30,
